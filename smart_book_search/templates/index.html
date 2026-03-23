@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Умный поиск по книгам</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+<div class="container">
+    <h1>Умный поиск по книгам</h1>
+
+    <section>
+        <h2>1) Загрузить книгу (.txt)</h2>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="text" name="title" placeholder="Название книги (необязательно)" />
+            <input type="file" name="book" accept=".txt" required />
+            <button type="submit">Загрузить</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>2) Поиск фрагментов</h2>
+        <form action="/search" method="post">
+            <input type="text" name="query" placeholder="Например: Найди, где говорится про Пьера" required />
+            <button type="submit">Искать</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>3) Вопрос-ответ по книгам</h2>
+        <form action="/ask" method="post">
+            <input type="text" name="question" placeholder='Например: Что произошло с Наташей и Пьером в эпилоге?' required />
+            <button type="submit">Спросить</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Загруженные книги</h2>
+        {% if books %}
+            <ul>
+                {% for b in books %}
+                    <li>{{ b['title'] }} <span class="muted">({{ b['created_at'] }})</span></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="muted">Пока книг нет.</p>
+        {% endif %}
+    </section>
+</div>
+</body>
+</html>
