@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Результаты</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+<div class="container">
+    <p><a href="/">← На главную</a></p>
+
+    {% if mode == 'search' %}
+        <h1>Результаты поиска</h1>
+        <p><b>Запрос:</b> {{ query }}</p>
+        {% if no_data %}
+            <p class="warn">Релевантных фрагментов не найдено.</p>
+        {% else %}
+            {% for hit in hits %}
+                <div class="card">
+                    <p><b>Книга:</b> {{ hit.book_title }}</p>
+                    <p><b>Место:</b> {{ hit.chapter or '—' }}, фрагмент #{{ hit.chunk_index }}</p>
+                    <p><b>Оценка:</b> {{ '%.3f' % hit.score }}</p>
+                    <p>{{ hit.text }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+
+    {% if mode == 'qa' %}
+        <h1>Ответ на вопрос</h1>
+        <p><b>Вопрос:</b> {{ query }}</p>
+        {% if result %}
+            <div class="card">
+                <p><b>Ответ:</b> {{ result.answer }}</p>
+                <p><b>Уверенность:</b> {{ '%.2f' % result.confidence }}</p>
+            </div>
+
+            <h2>Цитаты-основания</h2>
+            {% for hit in result.citations %}
+                <div class="card">
+                    <p><b>Книга:</b> {{ hit.book_title }}</p>
+                    <p><b>Место:</b> {{ hit.chapter or '—' }}, фрагмент #{{ hit.chunk_index }}</p>
+                    <p>{{ hit.text }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if no_data %}
+            <p class="warn">Надёжного ответа в загруженных книгах не найдено.</p>
+        {% endif %}
+    {% endif %}
+</div>
+</body>
+</html>

@@ -1,0 +1,302 @@
+{
+  "name": "Telegram Smart Book Search",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message || {};\nconst text = (msg.text || '').trim();\nconst chatId = msg.chat?.id;\n\nlet action = 'help';\nlet payload = '';\n\nif (text.startsWith('/ask ')) {\n  action = 'ask';\n  payload = text.replace('/ask', '').trim();\n} else if (text.startsWith('/search ')) {\n  action = 'search';\n  payload = text.replace('/search', '').trim();\n} else if (text === '/start' || text === '/help') {\n  action = 'help';\n}\n\nreturn [{ json: { action, payload, chatId } }];"
+      },
+      "id": "parse-command",
+      "name": "Code (Parse Command)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "ask",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "search",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-action",
+      "name": "Switch Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -430,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/api/ask",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"question\": $json.payload,\n  \"limit\": 5\n}",
+        "options": {}
+      },
+      "id": "ask-api",
+      "name": "HTTP ASK API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -180,
+        -130
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Code (Parse Command)').item.json;\nconst data = $json;\nlet txt = `Ответ:\n${data.answer}\n\nУверенность: ${Number(data.confidence ?? 0).toFixed(2)}`;\n\nif (Array.isArray(data.citations) && data.citations.length) {\n  txt += '\\n\\nЦитаты:';\n  data.citations.slice(0,3).forEach((c, i) => {\n    const chunk = (c.text || '').slice(0, 220);\n    txt += `\\n${i+1}) ${c.book_title}, ${c.chapter || '—'}, #${c.chunk_index}\\n${chunk}`;\n  });\n}\n\nreturn [{ json: { chatId: src.chatId, text: txt } }];"
+      },
+      "id": "format-ask",
+      "name": "Code (Format ASK)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        70,
+        -130
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "={{$json.text}}",
+        "additionalFields": {}
+      },
+      "id": "send-ask",
+      "name": "Telegram Send ASK",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        310,
+        -130
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8001/api/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": $json.payload,\n  \"limit\": 5\n}",
+        "options": {}
+      },
+      "id": "search-api",
+      "name": "HTTP SEARCH API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -180,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Code (Parse Command)').item.json;\nconst data = $json;\nconst hits = data.hits || [];\n\nif (!hits.length) {\n  return [{ json: { chatId: src.chatId, text: 'Ничего не найдено.' } }];\n}\n\nlet txt = `Найдено: ${hits.length}`;\nhits.slice(0,5).forEach((h, i) => {\n  const chunk = (h.text || '').slice(0, 220);\n  txt += `\\n\\n${i+1}) ${h.book_title}, ${h.chapter || '—'}, #${h.chunk_index}\\n${chunk}`;\n});\n\nreturn [{ json: { chatId: src.chatId, text: txt } }];"
+      },
+      "id": "format-search",
+      "name": "Code (Format SEARCH)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        70,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "={{$json.text}}",
+        "additionalFields": {}
+      },
+      "id": "send-search",
+      "name": "Telegram Send SEARCH",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        310,
+        30
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "Команды:\n/search <запрос>\n/ask <вопрос>",
+        "additionalFields": {}
+      },
+      "id": "send-help",
+      "name": "Telegram Send HELP",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -170,
+        200
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code (Parse Command)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code (Parse Command)": {
+      "main": [
+        [
+          {
+            "node": "Switch Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Action": {
+      "main": [
+        [
+          {
+            "node": "HTTP ASK API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP SEARCH API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Send HELP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP ASK API": {
+      "main": [
+        [
+          {
+            "node": "Code (Format ASK)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code (Format ASK)": {
+      "main": [
+        [
+          {
+            "node": "Telegram Send ASK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP SEARCH API": {
+      "main": [
+        [
+          {
+            "node": "Code (Format SEARCH)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code (Format SEARCH)": {
+      "main": [
+        [
+          {
+            "node": "Telegram Send SEARCH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceId": "replace-with-your-instance-id"
+  },
+  "id": "telegram-smart-book-search",
+  "tags": []
+}
