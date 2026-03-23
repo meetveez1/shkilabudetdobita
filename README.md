@@ -36,10 +36,13 @@ export TELEGRAM_BOT_TOKEN="<токен от BotFather>"
 python bot.py
 ```
 
-Команды:
+В боте есть кнопочное меню: **📚 Загрузить книгу**, **🔎 Поиск фрагментов**, **❓ Задать вопрос**, **ℹ️ Помощь**.
+
+Команды тоже работают:
 - `/addbook` → после этого отправь `.txt` файл
 - `/search <запрос>`
 - `/ask <вопрос>`
+- `/menu` → показать меню
 
 ### Вариант B: n8n + Telegram
 
@@ -51,6 +54,8 @@ python api.py
 
 2. Импортируй готовый workflow `n8n/telegram_book_search_workflow.json` (или собери вручную по `N8N_SETUP.md`).
 3. После импорта укажи Telegram credentials и проверь API URL в HTTP-нодах.
+
+Подробно по полям **Workflow Settings** (Execution Logic, Timezone, Save executions, Timeout и т.д.) см. раздел 7 в `N8N_SETUP.md`.
 
 ---
 
@@ -104,3 +109,17 @@ python api.py
 
 - QA extractive (без внешней LLM): ответ формируется из найденных предложений.
 - Для загрузки файлов через n8n из Telegram нужна отдельная ветка с получением файла (описано в `N8N_SETUP.md`).
+
+
+## Troubleshooting (n8n + Telegram)
+
+Ошибка:
+`Because of limitations in Telegram Trigger, n8n can't listen for test executions at the same time as listening for production ones...`
+
+Решение:
+1. Временно **Deactivate/Unpublish** workflow.
+2. Запусти **Execute workflow** для теста.
+3. После теста снова **Activate/Publish**.
+
+Подробно: см. раздел 8 в `N8N_SETUP.md`.
+

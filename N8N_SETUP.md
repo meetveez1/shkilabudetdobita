@@ -177,3 +177,49 @@ return [{ json: { chatId: $('Code (Parse Command)').item.json.chatId, text: txt 
 - или POST на `/api/upload`.
 
 Для полной загрузки файлов через n8n из Telegram можно добавить отдельную ветку с `Telegram getFile + HTTP download + multipart upload`.
+
+
+## 7) Что писать в Workflow Settings (как на твоем скрине)
+
+Для workflow **Telegram Smart Book Search** заполни так:
+
+- **Execution Logic** → `v1 (recommended)`
+- **Error Workflow** → `- No Workflow -` (на старте можно оставить пустым)
+- **This workflow can be called by** → оставь по умолчанию (только твои workflows)
+- **Timezone** → `Europe/Moscow`
+- **Save failed production executions** → `Save` (оставь Default)
+- **Save successful production executions** → `Do not Save` (рекомендую, чтобы не раздувать БД n8n)
+- **Save manual executions** → `Save`
+- **Save execution progress** → `Do not save`
+- **Data Redaction Policy** → `None` (если нет требований скрывать поля)
+- **Timeout Workflow** → `300` секунд (5 минут)
+- **Estimated time saved**:
+  - **Type** → `Fixed`
+  - **Minutes per production execution** → `2`
+
+> Если бот уже стабильно работает, можно дополнительно включить отдельный Error Workflow для уведомлений в Telegram при падениях.
+
+
+## 8) Ошибка: "n8n can't listen for test executions ... Unpublish the workflow"
+
+Это не баг твоего кода. Это ограничение Telegram Trigger в n8n: 
+**один и тот же бот не может одновременно слушаться и в Production, и в Test режиме**.
+
+### Как быстро починить
+
+1. Открой workflow и нажми **Deactivate / Unpublish**.
+2. Нажми **Execute workflow** (Test mode).
+3. Отправь сообщение боту в Telegram.
+4. После проверки снова нажми **Activate / Publish**.
+
+### Если нужно тестировать без отключения продакшна
+
+- Создай **второго Telegram-бота** через BotFather (test bot) и отдельные credentials в n8n.
+- Либо сделай отдельный test workflow с другим токеном.
+
+### Важный чек-лист
+
+- Активен только один workflow на один Telegram token.
+- В Telegram Trigger выбран `message` update.
+- После смены токена/credentials перезапусти workflow (Deactivate → Activate).
+
